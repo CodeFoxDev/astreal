@@ -13,10 +13,15 @@ export function* walkSync(dir: string): Generator<string> {
   }
 }
 
+/**
+ * Turns the filename in the router directory into a valid route
+ */
 export function resolveToRoute(path: string) {
   if (path.endsWith(".ts") || path.endsWith(".js")) path = path.slice(0, -3);
   if (path.endsWith("/index")) path = path.replace("/index", "");
-  return path;
+
+  if (path === "") return "/";
+  else return path;
 }
 
 function ensureDirRel(dir: string, content?: string) {
@@ -24,9 +29,14 @@ function ensureDirRel(dir: string, content?: string) {
   if (!fs.existsSync(f)) fs.writeFileSync(f, content ?? "", { encoding: "utf-8" });
 }
 
+export function joinRoot(...files: string[]) {
+  return path.join(process.cwd(), ...files);
+}
+
 // Declarations
 // TODO: Add removeTrailing and compact this maybe
-const baseContent = `export {};
+const baseContent = `
+export {};
 type BaseRoute = \`/\${string}\`;
 type EnsureSlash<P extends string> = P extends \`/\${string}\` ? P : \`/\${P}\`;
 type StripType<Path extends string, Next extends string> = Path extends \`[\${infer Param}]\`
@@ -52,7 +62,7 @@ export function generateDeclarations(files: string[], options: Options) {
     content: res,
     write() {
       ensureDirRel(".astreal");
-      fs.writeFileSync(path.join(process.cwd(), ".astreal/declarations.d.ts"), res);
+      fs.writeFileSync(path.join(process.cwd(), ".astreal/routes.d.ts"), res);
     }
   };
 }

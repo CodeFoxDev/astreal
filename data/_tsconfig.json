@@ -1,0 +1,4 @@
+{
+  "moduleDetection": "force",
+  "include": ["routes.d.ts"]
+}

@@ -2,6 +2,7 @@ import { defineConfig } from "rollup";
 import typescript from "@rollup/plugin-typescript";
 import commonjs from "@rollup/plugin-commonjs";
 import resolve from "@rollup/plugin-node-resolve";
+import json from "@rollup/plugin-json";
 
 export default defineConfig([
   {
@@ -18,7 +19,8 @@ export default defineConfig([
       typescript(),
       commonjs({
         include: ["node_modules/**"]
-      })
+      }),
+      json()
     ]
   }
 ]);
