@@ -1,8 +1,9 @@
 import type { Plugin } from "rollup";
 import { join } from "node:path";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { prepareFolder, generateRoutes } from "declarations";
 import { walkSync } from "utils";
+import { normalizePath } from "@rollup/pluginutils";
 
 export interface Options {
   /**
@@ -50,8 +51,14 @@ export default function (_opts?: Options): Plugin {
       files = [];
 
       for (const f of _files) {
-        const norm = f.replaceAll("\\", "/");
-        files.push(norm.replace(normRouterDir, ""));
+        const route = f.replaceAll("\\", "/").replace(normRouterDir, "");
+        files.push(route);
+
+        // TODO: Provide option to merge all route files into single file
+        this.emitFile({
+          type: "chunk",
+          id: `api${route}`
+        });
       }
     },
     // Generate / update types on buildend, to avoid interference with rollup
@@ -59,6 +66,10 @@ export default function (_opts?: Options): Plugin {
       await prepareFolder();
       const routes = generateRoutes(files, options);
       await routes.write();
+    },
+    async transform(code, _id) {
+      const id = normalizePath(_id);
+      // TODO: transform file to include correct imports
     }
   };
 }
