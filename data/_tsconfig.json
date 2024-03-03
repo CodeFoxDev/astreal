@@ -1,4 +1,6 @@
 {
-  "moduleDetection": "force",
+  "compilerOptions": {
+    "moduleDetection": "force"
+  },
   "include": ["routes.d.ts"]
 }
