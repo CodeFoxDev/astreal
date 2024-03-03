@@ -1,10 +1,4 @@
-export type BaseRoute = `/${string}`;
-
-/** Ensures path has leading slash */
-export type LeadingSlash<P extends string> = P extends `/${string}` ? P : `/${P}`;
-
-/** Ensures path has no trailing slash */
-export type TrailingSlash<P extends string> = P extends `${infer R}/` ? R : P;
+import type { TrailingSlash, LeadingSlash } from "astreal";
 
 export type RemoveDoubleSlashes<Path extends string> = Path extends `${infer Segment}//${infer Rest}`
   ? RemoveDoubleSlashes<`${Segment}/${RemoveDoubleSlashes<Rest>}`>
@@ -54,24 +48,3 @@ type ParseInlineTypes<P> = P extends "string"
   : P extends "any"
   ? any
   : unknown;
-
-/**
- * @param P The path that this listener belongs to
- * @param M The method of the listener: "get", "post", etc.
- */
-export type Listener<P extends string, M extends Method> = (
-  req: Request<P, M>,
-  res: Response
-) => void | any | Promise<void> | Promise<any>;
-
-// Request
-export interface Request<P extends string, M extends Method> {
-  /**
-   * The params used in the url, will be inferred from path argument
-   */
-  params: ExtractParams<P>;
-  method: M;
-}
-
-// Response
-export interface Response {}

@@ -1,4 +1,4 @@
-import type { Options } from "plugin";
+import type { Options } from "tools/rollup";
 import { existsSync as exists, mkdirSync as mkdir, readFileSync, unlinkSync as unlink } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -29,7 +29,9 @@ export async function updateTSConfig() {}
  * @param files Array of files to include, relative to the routerDirectory
  */
 export function generateRoutes(files: string[], options: Required<Options>) {
-  let res = `import type { FormatReturn, Format, BaseRoute, Listener } from "./helpers.d.ts";\n`;
+  let res = `import type { FormatReturn, Format } from "./helpers.d.ts";
+import type { Listener, BaseRoute } from "astreal";
+`;
   for (const f of files) res += generateModule(f, options);
 
   return {

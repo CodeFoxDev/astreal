@@ -6,8 +6,8 @@ import json from "@rollup/plugin-json";
 
 export default defineConfig([
   {
-    input: ["src/index.ts", "src/plugin.ts"],
-    external: ["node:fs", "node:path"],
+    input: ["src/index.ts", "src/tools/rollup.ts"],
+    external: ["node:fs", "node:fs/promises", "node:url", "node:path", "@rollup/pluginutils"],
     output: {
       dir: "dist",
       format: "es",

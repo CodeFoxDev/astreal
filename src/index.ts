@@ -1,19 +1,21 @@
-export type BaseRoute = `/${string}`;
+export type { BaseRoute, LeadingSlash, TrailingSlash, Request, Response, Router, Listener } from "./router";
+export { router } from "./router";
 
-export type EnsureSlash<P extends string> = P extends `/${string}` ? P : `/${P}`;
+import type { ClientRequest, ServerResponse, RequestListener } from "node:http";
 
-type StripType<Path extends string, Next extends string> = Path extends `[${infer Param}]`
-  ? Path extends `[${infer ParamWOT} :${string}]`
-    ? `[${ParamWOT}]${Next}`
-    : Path extends `[${infer ParamWOT}:${string}]`
-    ? `[${ParamWOT}]${Next}`
-    : `[${Param}]${Next}`
-  : `${Path}${Next}`;
+type Astreal = RequestListener & {
+  listen: () => void;
+};
 
-export type StripTypes<Path extends string> = Path extends `${infer Segment}/${infer Rest}`
-  ? StripType<Segment, `/${StripTypes<Rest>}`>
-  : StripType<Path, "">;
+/**
+ * Creates the actual app itself, returns a request handler that can be attached to the `node:http` createServer listener.
+ */
+export default function astreal(): Astreal {
+  const handler: Astreal = (req, res) => {};
 
-export type RemoveDoubleSlashes<Path extends string> = Path extends `${infer Segment}//${infer Rest}`
-  ? RemoveDoubleSlashes<`${Segment}/${RemoveDoubleSlashes<Rest>}`>
-  : Path;
+  handler.listen = () => null;
+
+  return handler;
+}
+
+export { astreal };

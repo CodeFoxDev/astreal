@@ -1,4 +1,4 @@
-import type { Options } from "./plugin";
+import type { Options } from "./tools/rollup";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -76,3 +76,86 @@ declare module "../${options.routerDir ?? "api"}${file}" {
 }
   `;
 }
+
+/** Filters out the params along with their provided types, first group is param name, second group is optionally the provided type */
+const PARAM_REGEX = /\[([^:\]]*)(: {0,1}[a-zA-Z]*){0,}\]/g;
+
+/**
+ * Parses the path to remove types
+ */
+export function parseTypes(path: string) {
+  let res: { path: string; types: Record<string, string> } = { path, types: {} };
+  let m: RegExpExecArray | null;
+
+  while ((m = PARAM_REGEX.exec(path)) !== null) {
+    if (m.index === PARAM_REGEX.lastIndex) PARAM_REGEX.lastIndex++;
+    if (m.length === 0) continue;
+
+    res.path = res.path.replace(m[0], `:${m[1]}`);
+    res.types[m[1]] =
+      m[2] === undefined ? "any" : m[2].trim().replace(":", "") === "bool" ? "boolean" : m[2].trim().replace(":", "");
+  }
+
+  return res;
+}
+
+/**
+ * Verifies the given params, returns true if the params align with the types given, else returns false
+ */
+export function verifyParams(
+  params: Record<string, string | boolean | number | any>,
+  types: Record<string, string>
+): boolean {
+  for (const name in params) {
+    const expected = types[name];
+    if (!expected) continue; // Should never happen
+    const val = params[name];
+    // Add more test cases if necessary
+    if (expected === "any") continue;
+    else if ((val === "true" || val === "false") && expected === "boolean") continue;
+    else if (!isNaN(val as number) && !isNaN(parseFloat(val as string)) && expected === "number") continue;
+    else if (typeof val === expected) continue;
+    else return false;
+  }
+  return true;
+}
+
+/**
+ * Removes types from the route parameters
+ */
+export type StripTypes<Path extends string> = Path extends `${infer Segment}/${infer Rest}`
+  ? StripType<Segment, `/${StripTypes<Rest>}`>
+  : StripType<Path, "">;
+type StripType<Path extends string, Next extends string> = Path extends `[${infer Param}]`
+  ? Path extends `[${infer ParamWOT} :${string}]`
+    ? `[${ParamWOT}]${Next}`
+    : Path extends `[${infer ParamWOT}:${string}]`
+    ? `[${ParamWOT}]${Next}`
+    : `[${Param}]${Next}`
+  : `${Path}${Next}`;
+
+/**
+ * Creates an object that represents the params in the route, also includes types if specified
+ */
+export type ExtractParams<Path> = Path extends `${infer Segment}/${infer Rest}`
+  ? ExtractParam<Segment, ExtractParams<Rest>>
+  : ExtractParam<Path, {}>;
+type ExtractParam<Path, NextPart> = Path extends `[${infer Param}]`
+  ? Path extends `[${infer ParamWOT} :${infer Type}]`
+    ? Record<ParamWOT, ParseInlineTypes<Trim<Type>>> & NextPart
+    : Path extends `[${infer ParamWOT}:${infer Type}]`
+    ? Record<ParamWOT, ParseInlineTypes<Trim<Type>>> & NextPart
+    : Record<Param, any> & NextPart
+  : NextPart;
+
+type Trim<T extends string> = T extends ` ${infer R}` ? R : T extends `${infer R} ` ? R : T;
+
+type ParseInlineTypes<P> = P extends "string"
+  ? string
+  : P extends "number"
+  ? number
+  : P extends "boolean" | "bool"
+  ? boolean
+  : P extends "any"
+  ? any
+  : unknown;
