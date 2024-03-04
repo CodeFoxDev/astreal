@@ -2,6 +2,7 @@
   "compilerOptions": {
     "strict": true,
     "baseUrl": "src",
+    "rootDir": ".",
     // Dist
     "outDir": "dist",
     "moduleResolution": "bundler",

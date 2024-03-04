@@ -9,8 +9,9 @@ export function router<B extends BaseRoute>(base: B): Router<B> {
   return {
     get<P extends BaseRoute>(_path: P, cb: Listener<FullRoute<B, P>, "get">) {
       let path: LeadingSlash<P> = _path.startsWith("/") ? (_path as LeadingSlash<P>) : (`/${_path}` as LeadingSlash<P>);
-      const full = `${base}${path}` as StripTypes<FullRoute<B, P>>;
+      const full = `${base}${path}` as FormatReturn<FullRoute<B, P>>;
       let parsed = parseTypes(full);
+      console.log(parsed);
 
       /* app.get(parsed.path, async (_req, res) => {
         const req = _req as Request<FullRoute<B, P>, "get">;
@@ -29,7 +30,7 @@ export function router<B extends BaseRoute>(base: B): Router<B> {
     },
     post<P extends BaseRoute>(_path: P, cb: Listener<FullRoute<B, P>, "post">) {
       let path: LeadingSlash<P> = _path.startsWith("/") ? (_path as LeadingSlash<P>) : (`/${_path}` as LeadingSlash<P>);
-      const full = `${base}${path}` as StripTypes<FullRoute<B, P>>;
+      const full = `${base}${path}` as FormatReturn<FullRoute<B, P>>;
       let parsed = parseTypes(full);
 
       /* app.post(parsed.path, async (_req, res) => {
@@ -80,6 +81,13 @@ export type TrailingSlash<P extends string> = P extends `${infer R}/` ? R : P;
 
 type FullRoute<B extends string, P extends string> = `${B}${LeadingSlash<P>}`;
 
+export type RemoveDoubleSlashes<Path extends string> = Path extends `${infer Segment}//${infer Rest}`
+  ? RemoveDoubleSlashes<`${Segment}/${RemoveDoubleSlashes<Rest>}`>
+  : Path;
+
+export type Format<Path extends string> = LeadingSlash<TrailingSlash<RemoveDoubleSlashes<Path>>>;
+export type FormatReturn<Path extends string> = LeadingSlash<TrailingSlash<RemoveDoubleSlashes<StripTypes<Path>>>>;
+
 type Method = "get" | "post";
 
 // TODO: Also add logger as third param
@@ -101,8 +109,8 @@ export interface Router<B extends string> {
    * See {@link BaseRoute} for more info on valid route schemes
    */
   //get(cb: Listener<B, "get">): StripTypes<B>;
-  get<P extends BaseRoute>(path: P, cb: Listener<FullRoute<B, P>, "get">): StripTypes<FullRoute<B, P>>;
-  post<P extends BaseRoute>(path: P, cb: Listener<FullRoute<B, P>, "post">): StripTypes<FullRoute<B, P>>;
+  get<P extends BaseRoute>(path: P, cb: Listener<FullRoute<B, P>, "get">): FormatReturn<FullRoute<B, P>>;
+  post<P extends BaseRoute>(path: P, cb: Listener<FullRoute<B, P>, "post">): FormatReturn<FullRoute<B, P>>;
 }
 
 // Request

@@ -1,8 +1,8 @@
 import type { Plugin } from "rollup";
-import { join } from "node:path";
+import { join, normalize } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import { prepareFolder, generateRoutes } from "declarations";
-import { walkSync } from "utils";
+import { walkSync, resolveToRoute } from "utils";
 import { normalizePath } from "@rollup/pluginutils";
 
 export interface Options {
@@ -36,6 +36,8 @@ export default function (_opts?: Options): Plugin {
   _opts.provideGlobals ??= true;
   const options = _opts as Required<Options>;
 
+  const routerDir = normalizePath(join(process.cwd(), options.routerDir));
+  const relRouterDir = normalizePath(options.routerDir);
   let files: string[] = [];
 
   return {
@@ -43,23 +45,31 @@ export default function (_opts?: Options): Plugin {
 
     // Retrieve all the files that server api directory to generate map of import files (or bundle into one file)
     buildStart(_options) {
-      const routerDir = join(process.cwd(), options.routerDir);
-      const normRouterDir = routerDir.replaceAll("\\", "/");
       if (!existsSync(routerDir)) return; // handle error
 
       const _files = walkSync(routerDir);
       files = [];
 
       for (const f of _files) {
-        const route = f.replaceAll("\\", "/").replace(normRouterDir, "");
+        const route = f.replaceAll("\\", "/").replace(routerDir, "");
         files.push(route);
 
         // TODO: Provide option to merge all route files into single file
         this.emitFile({
           type: "chunk",
-          id: `api${route}`
+          id: `${relRouterDir}${route}`
         });
       }
+
+      // Not sure if this works correctly in watch mode
+      this.emitFile({
+        type: "prebuilt-chunk",
+        fileName: `${relRouterDir}/__routes.js`,
+        code: `export const files = ${JSON.stringify(files.map((e) => `.${e}`))};
+export async function load() {
+  for (const f of files) await import(f);
+}`
+      });
     },
     // Generate / update types on buildend, to avoid interference with rollup
     async buildEnd() {
@@ -69,7 +79,15 @@ export default function (_opts?: Options): Plugin {
     },
     async transform(code, _id) {
       const id = normalizePath(_id);
+      if (!id.includes(routerDir)) return;
+      const rel = id.replace(routerDir, "");
+      const route = resolveToRoute(rel);
       // TODO: transform file to include correct imports
+      // TODO: Create compiler(ish) to avoid errors if e.g. get has already been declared
+      const pre = `import { router } from "astreal"; const { get, post } = router("${route}"); \n`;
+      const res = pre + code;
+
+      return res;
     }
   };
 }
