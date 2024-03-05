@@ -12,6 +12,7 @@ export interface Options {
    */
   routerDir?: string;
 
+  // TODO: (currently always true)
   /**
    * Will provide globals to all files in the api directory, this has the advantage of providing more ts support,
    * like adding the full route to the req object and resolving route params in directory names,
@@ -20,12 +21,21 @@ export interface Options {
    */
   provideGlobals?: boolean;
 
+  // TODO:
   /**
    * Will change the tsconfig file in the root of the project to include declarations for the api,
    * otherwise manually add `.astreal/routes.d.ts` to the `include` section in the tsconfig.json file
    * @default false
    */
   allowModifyingTSConfig?: boolean;
+
+  // TODO:
+  /**
+   * Specifies wheter or not to generate the `.astreal` folder in the project root or in the node_modules folder,
+   * by default it will be in the project's root.
+   * @default true
+   */
+  projectLevelTypeFolder?: boolean;
 
   //bundleFiles: boolean;
 }
@@ -38,7 +48,7 @@ export default function (_opts?: Options): Plugin {
 
   const routerDir = normalizePath(join(process.cwd(), options.routerDir));
   const relRouterDir = normalizePath(options.routerDir);
-  let files: string[] = [];
+  let files: { route: string; id: string }[] = [];
 
   return {
     name: "astreal",
@@ -51,30 +61,40 @@ export default function (_opts?: Options): Plugin {
       files = [];
 
       for (const f of _files) {
+        if (!f.endsWith(".ts") && !f.endsWith(".js")) continue;
         const route = f.replaceAll("\\", "/").replace(routerDir, "");
-        files.push(route);
-
         // TODO: Provide option to merge all route files into single file
-        this.emitFile({
+        const id = this.emitFile({
           type: "chunk",
           id: `${relRouterDir}${route}`
         });
+        files.push({ id, route });
       }
 
       // Not sure if this works correctly in watch mode
       this.emitFile({
         type: "prebuilt-chunk",
         fileName: `${relRouterDir}/__routes.js`,
-        code: `export const files = ${JSON.stringify(files.map((e) => `.${e}`))};
+        code: `import { pathToFileURL, fileURLToPath } from "node:url";
+import { resolve, join } from "node:path";
+
+export const files = ${JSON.stringify(files.map((e) => `${`.${e.route}`.slice(0, -2)}js`.replaceAll(/[\[\]]/g, "_")))};
 export async function load() {
-  for (const f of files) await import(f);
+  const dir = resolve(fileURLToPath(import.meta.url), "../");
+  for (const f of files) {
+    const file = resolve(dir, f);
+    await import(pathToFileURL(file).href);
+  }
 }`
       });
     },
-    // Generate / update types on buildend, to avoid interference with rollup
-    async buildEnd() {
+    // Generate / update types, to avoid interference with rollup
+    async writeBundle() {
       await prepareFolder();
-      const routes = generateRoutes(files, options);
+      const routes = generateRoutes(
+        files.map((e) => e.route),
+        options
+      );
       await routes.write();
     },
     async transform(code, _id) {
@@ -82,7 +102,6 @@ export async function load() {
       if (!id.includes(routerDir)) return;
       const rel = id.replace(routerDir, "");
       const route = resolveToRoute(rel);
-      // TODO: transform file to include correct imports
       // TODO: Create compiler(ish) to avoid errors if e.g. get has already been declared
       const pre = `import { router } from "astreal"; const { get, post } = router("${route}"); \n`;
       const res = pre + code;
