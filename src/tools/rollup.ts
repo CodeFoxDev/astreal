@@ -1,60 +1,27 @@
 import type { Plugin } from "rollup";
+import type { Options } from "config";
 import { join, normalize } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import { prepareFolder, generateRoutes } from "declarations";
 import { walkSync, resolveToRoute } from "utils";
+import { resolveOptions } from "config";
+import { ModuleCompiler } from "compiler";
 import { normalizePath } from "@rollup/pluginutils";
 
-export interface Options {
-  /**
-   * The base directory of the router, relative to the working directory
-   * @default 'api'
-   */
-  routerDir?: string;
-
-  // TODO: (currently always true)
-  /**
-   * Will provide globals to all files in the api directory, this has the advantage of providing more ts support,
-   * like adding the full route to the req object and resolving route params in directory names,
-   * if set to false, you will have to import the handlers yourself.
-   * @default true
-   */
-  provideGlobals?: boolean;
-
-  // TODO:
-  /**
-   * Will change the tsconfig file in the root of the project to include declarations for the api,
-   * otherwise manually add `.astreal/routes.d.ts` to the `include` section in the tsconfig.json file
-   * @default false
-   */
-  allowModifyingTSConfig?: boolean;
-
-  // TODO:
-  /**
-   * Specifies wheter or not to generate the `.astreal` folder in the project root or in the node_modules folder,
-   * by default it will be in the project's root.
-   * @default true
-   */
-  projectLevelTypeFolder?: boolean;
-
-  //bundleFiles: boolean;
-}
-
 export default function (_opts?: Options): Plugin {
-  _opts ??= {};
-  _opts.routerDir ??= "api";
-  _opts.provideGlobals ??= true;
-  const options = _opts as Required<Options>;
+  const options = resolveOptions(_opts);
 
-  const routerDir = normalizePath(join(process.cwd(), options.routerDir));
-  const relRouterDir = normalizePath(options.routerDir);
+  const routerDir = normalizePath(join(process.cwd(), options.apiDirectory));
+  const relRouterDir = normalizePath(options.apiDirectory);
+
+  const module = new ModuleCompiler(options);
   let files: { route: string; id: string }[] = [];
 
   return {
     name: "astreal",
 
     // Retrieve all the files that server api directory to generate map of import files (or bundle into one file)
-    buildStart(_options) {
+    async buildStart(_options) {
       if (!existsSync(routerDir)) return; // handle error
 
       const _files = walkSync(routerDir);
@@ -63,12 +30,21 @@ export default function (_opts?: Options): Plugin {
       for (const f of _files) {
         if (!f.endsWith(".ts") && !f.endsWith(".js")) continue;
         const route = f.replaceAll("\\", "/").replace(routerDir, "");
+        const content = await this.load({
+          id: f,
+          meta: {
+            augmentGlobals: false // Set this to true if not bundling
+          }
+        });
+        if (!content.code) continue; // Should never happen
+        module.addTarget(f, content.code);
         // TODO: Provide option to merge all route files into single file
-        const id = this.emitFile({
+        /* const id = this.emitFile({
           type: "chunk",
           id: `${relRouterDir}${route}`
         });
-        files.push({ id, route });
+        files.push({ id, route }); */
+        //module.addTarget(route, content);
       }
 
       // Not sure if this works correctly in watch mode
@@ -98,6 +74,10 @@ export async function load() {
       await routes.write();
     },
     async transform(code, _id) {
+      const info = this.getModuleInfo(_id);
+      const augmentGlobals = info?.meta?.augmentGlobals === true;
+      if (augmentGlobals === false) return;
+
       const id = normalizePath(_id);
       if (!id.includes(routerDir)) return;
       const rel = id.replace(routerDir, "");
@@ -105,6 +85,8 @@ export async function load() {
       // TODO: Create compiler(ish) to avoid errors if e.g. get has already been declared
       const pre = `import { router } from "astreal"; const { get, post } = router("${route}"); \n`;
       const res = pre + code;
+
+      //parse(res);
 
       return res;
     }

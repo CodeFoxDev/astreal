@@ -1,4 +1,4 @@
-import type { Options } from "./tools/rollup";
+import type { Options, ResolvedOptions } from "config";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -54,7 +54,7 @@ type RemoveDoubleSlashes<Path extends string> = Path extends \`\${infer Segment}
   : Path;
 `;
 
-export function generateDeclarations(files: string[], options: Options) {
+export function generateDeclarations(files: string[], options: ResolvedOptions) {
   let res = baseContent;
 
   for (const f of files) res += generateModuleCode(f, options);
@@ -67,10 +67,10 @@ export function generateDeclarations(files: string[], options: Options) {
   };
 }
 
-function generateModuleCode(file: string, options: Options) {
+function generateModuleCode(file: string, options: ResolvedOptions) {
   const route = resolveToRoute(file);
   return `
-declare module "../${options.routerDir ?? "api"}${file}" {
+declare module "../${options.apiDirectory ?? "api"}${file}" {
   function get(callback: (req: any, res: any) => any | void): RemoveDoubleSlashes<StripTypes<\`${route}\`>>;
   function get<P extends BaseRoute>(path: P, callback: (req: any, res: any) => any | void): RemoveDoubleSlashes<StripTypes<\`${route}\${P}\`>>;
 }

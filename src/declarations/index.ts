@@ -1,4 +1,4 @@
-import type { Options } from "tools/rollup";
+import type { Options, ResolvedOptions } from "config";
 import { existsSync as exists, mkdirSync as mkdir, readFileSync, unlinkSync as unlink } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -28,7 +28,7 @@ export async function updateTSConfig() {}
  * Generate route declarations for the `routes.d.ts` file
  * @param files Array of files to include, relative to the routerDirectory
  */
-export function generateRoutes(files: string[], options: Required<Options>) {
+export function generateRoutes(files: string[], options: ResolvedOptions) {
   let res = `import type { FormatReturn, Format } from "./helpers.d.ts";
 import type { Listener, BaseRoute } from "astreal";
 `;
@@ -42,10 +42,10 @@ import type { Listener, BaseRoute } from "astreal";
   };
 }
 
-function generateModule(file: string, options: Required<Options>) {
+function generateModule(file: string, options: ResolvedOptions) {
   const route = resolveToRoute(file);
   return `
-declare module "../${options.routerDir ?? "api"}${file}" {
+declare module "../${options.apiDirectory ?? "api"}${file}" {
   function get(callback: Listener<\`${route}\`, 'get'>): FormatReturn<\`${route}\`>;
   function get<P extends BaseRoute>(path: P, callback: Listener<\`${route}\${P}\`, 'get'>): FormatReturn<\`${route}\${P}\`>;
 }
