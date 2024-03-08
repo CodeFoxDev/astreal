@@ -2,17 +2,25 @@ export type { BaseRoute, LeadingSlash, TrailingSlash, Request, Response, Router,
 export { router } from "./router";
 
 import type { ClientRequest, ServerResponse, RequestListener } from "node:http";
+import type { BaseRoute } from "router";
 import { existsSync as exists } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-type Astreal = RequestListener & {
+export type Astreal = RequestListener & {
   listen: () => void;
   /**
    * Loads the functions from the filesystem router.
    */
   api: () => Promise<void>;
 };
+
+export interface Context<Route extends string = string> {
+  /**
+   * The base route of the current file
+   */
+  base: Route;
+}
 
 // TODO: Fix that it should result to built file
 const root = join(process.cwd(), "dist");

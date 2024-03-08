@@ -30,7 +30,7 @@ export async function updateTSConfig() {}
  */
 export function generateRoutes(files: string[], options: ResolvedOptions) {
   let res = `import type { FormatReturn, Format } from "./helpers.d.ts";
-import type { Listener, BaseRoute } from "astreal";
+import type { Listener, BaseRoute, Context } from "astreal";
 `;
   for (const f of files) res += generateModule(f, options);
 
@@ -45,7 +45,8 @@ import type { Listener, BaseRoute } from "astreal";
 function generateModule(file: string, options: ResolvedOptions) {
   const route = resolveToRoute(file);
   return `
-declare module "../${options.apiDirectory ?? "api"}${file}" {
+declare module "../${options.apiDirectory ?? "api"}${file.slice(0, -3)}" {
+  const astreal: Context<"${route}">;
   function get(callback: Listener<\`${route}\`, 'get'>): FormatReturn<\`${route}\`>;
   function get<P extends BaseRoute>(path: P, callback: Listener<\`${route}\${P}\`, 'get'>): FormatReturn<\`${route}\${P}\`>;
 }

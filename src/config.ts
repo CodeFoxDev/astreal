@@ -29,7 +29,11 @@ export interface Options {
    */
   typeFolderLocation?: "project" | "node_modules" | null;
 
-  //bundleFiles: boolean;
+  /**
+   * Whether or not to bundle all the api functions into a single file, this will enable you to use the `astreal` app instance global
+   * @default true
+   */
+  bundleFiles?: boolean;
 }
 
 export interface ResolvedOptions {
@@ -37,6 +41,7 @@ export interface ResolvedOptions {
   provideGlobals: boolean;
   allowModifyingTSConfig: boolean;
   typeFolderLocation: "project" | "node_modules" | null;
+  bundleFiles: boolean;
 }
 
 export function resolveOptions(options?: Options) {
@@ -44,6 +49,7 @@ export function resolveOptions(options?: Options) {
 
   if (typeof options.apiDirectory !== "string") options.apiDirectory = "api";
   if (typeof options.provideGlobals !== "boolean") options.provideGlobals = true;
+  if (typeof options.bundleFiles !== "boolean") options.bundleFiles = true;
   if (typeof options.allowModifyingTSConfig !== "boolean") options.allowModifyingTSConfig = false;
   if (
     options.typeFolderLocation !== "project" &&
