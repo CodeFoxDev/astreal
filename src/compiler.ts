@@ -4,16 +4,7 @@ import type { ResolvedOptions } from "config";
 import { join } from "node:path";
 import { resolveToRoute } from "utils";
 import { normalizePath } from "@rollup/pluginutils";
-import { parse as a_parse } from "acorn";
-
-export async function parse(input: string) {
-  const parsed = a_parse(input, { ecmaVersion: "latest", sourceType: "module" });
-  console.log(input);
-  console.log(JSON.stringify(parsed, null, 2));
-  console.log("============================");
-
-  parsed.body;
-}
+import { parse } from "acorn";
 
 export class Module {
   options: ResolvedOptions;
@@ -34,6 +25,8 @@ export class Module {
    * @param id The full path of the targetModule
    */
   link(id: string, code: string) {
+    const parsed = parse(code, { ecmaVersion: "latest", sourceType: "module" });
+    console.log(id, JSON.stringify(parsed.body, null, 2));
     this.targets.push({ id, code });
   }
 
